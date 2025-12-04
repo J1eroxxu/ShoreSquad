@@ -1,0 +1,15 @@
+{
+  "port": 5500,
+  "root": ".",
+  "ignore": ["node_modules", ".git", "dist"],
+  "file": "index.html",
+  "wait": 1000,
+  "mount": [["/components", "./components"]],
+  "https": false,
+  "proxy": [
+    {
+      "source": "/api",
+      "target": "http://localhost:3000"
+    }
+  ]
+}
