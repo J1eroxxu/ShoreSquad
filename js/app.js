@@ -16,7 +16,31 @@ const CONFIG = {
     CACHE_DURATION: 3600000, // 1 hour in ms
     DEBOUNCE_DELAY: 300,
     GEOLOCATION_TIMEOUT: 10000,
+    NEXT_CLEANUP: {
+        name: 'Pasir Ris Beach Cleanup',
+        location: 'Street View Asia, Pasir Ris, Singapore',
+        lat: 1.381497,
+        lng: 103.955574,
+        date: '2025-12-15', // Update with actual date
+        mapsUrl: 'https://www.google.com/maps/place/1.381497,103.955574',
+    },
 };
+
+/**
+ * API DOCUMENTATION
+ * ==================
+ * Weather Data: National Environment Agency (NEA) API
+ * Endpoint: https://api.data.gov.sg/v1/environment/4-day-weather-forecast
+ * Description: Real-time 4-day weather forecast for Singapore
+ * No authentication required
+ * Response includes:
+ *   - forecasts[]: Array of 4 daily forecasts
+ *   - forecasts[].date: Date string (YYYY-MM-DD)
+ *   - forecasts[].forecast: Weather condition (Sunny, Rainy, Cloudy, etc.)
+ *   - forecasts[].relative_humidity: Object with .low and .high percentages
+ * Rate limit: Free tier available without API key
+ * Source: https://data.gov.sg/datasets/d_df7e8898dcd24abfbb762efc21f630a7/view
+ */
 
 // Mock data for events (replace with API call)
 const MOCK_EVENTS = [
@@ -266,67 +290,115 @@ function initEventSearch() {
 // ============================================
 
 /**
- * Fetch weather data (mock implementation)
+ * Weather emoji mapping for NEA conditions
  */
-async function fetchWeather(location) {
+const WEATHER_EMOJI = {
+    'Sunny': '☀️',
+    'Cloudy': '☁️',
+    'Rainy': '🌧️',
+    'Thundery': '⛈️',
+    'Partly cloudy': '⛅',
+    'Partly Cloudy': '⛅',
+    'Mostly Cloudy': '☁️',
+    'Light Rain': '🌦️',
+    'Moderate Rain': '🌧️',
+    'Heavy Rain': '⛈️'
+};
+
+/**
+ * Fetch 4-day weather forecast from NEA API (Singapore weather)
+ */
+async function fetchWeatherForecast() {
     try {
-        // Mock weather data - replace with real API call
-        const mockWeather = {
-            location,
-            temperature: Math.floor(Math.random() * 15 + 15),
-            condition: ['Sunny', 'Cloudy', 'Partly Cloudy'][Math.floor(Math.random() * 3)],
-            humidity: Math.floor(Math.random() * 30 + 40),
-            windSpeed: Math.floor(Math.random() * 15 + 5),
-            uvIndex: Math.floor(Math.random() * 8 + 3),
-        };
-
-        return mockWeather;
-
-        // Real API call (uncomment when API key available):
-        // const url = `https://api.openweathermap.org/data/2.5/weather?q=${location}&units=metric&appid=${CONFIG.WEATHER_API_KEY}`;
-        // const data = await fetchWithTimeout(url);
-        // return {
-        //     location: data.name,
-        //     temperature: Math.round(data.main.temp),
-        //     condition: data.weather[0].main,
-        //     humidity: data.main.humidity,
-        //     windSpeed: Math.round(data.wind.speed),
-        //     uvIndex: 'N/A',
-        // };
+        const url = 'https://api.data.gov.sg/v1/environment/4-day-weather-forecast';
+        const data = await fetchWithTimeout(url, 8000);
+        return data;
     } catch (error) {
-        console.error('Weather fetch error:', error);
-        throw new Error('Could not fetch weather data');
+        console.error('NEA API fetch error:', error);
+        throw new Error('Could not fetch weather forecast from NEA. Please try again.');
     }
 }
 
 /**
- * Display weather information
+ * Parse NEA API response and format for display
+ */
+function parseNEAWeather(data) {
+    if (!data.items || !data.items[0]) {
+        throw new Error('Invalid weather data format');
+    }
+
+    const forecast = data.items[0].forecasts || [];
+    const validDate = data.items[0].valid_period?.start || new Date().toISOString();
+
+    return {
+        validDate,
+        forecasts: forecast,
+        lastUpdated: new Date(validDate).toLocaleString('en-SG', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        })
+    };
+}
+
+/**
+ * Fetch weather data with location fallback
+ */
+async function fetchWeather(location) {
+    try {
+        // Always fetch NEA Singapore forecast
+        const data = await fetchWeatherForecast();
+        return parseNEAWeather(data);
+    } catch (error) {
+        console.error('Weather fetch error:', error);
+        throw error;
+    }
+}
+
+/**
+ * Display weather information with 4-day forecast
  */
 function displayWeather(weather) {
     const display = document.getElementById('weatherDisplay');
     if (!display) return;
 
+    // Build forecast cards HTML
+    const forecastHTML = weather.forecasts.map((day, index) => {
+        const date = new Date(day.date);
+        const dateStr = date.toLocaleDateString('en-SG', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+        
+        const emoji = WEATHER_EMOJI[day.forecast] || '🌈';
+        
+        return `
+            <div class="forecast-card">
+                <div class="forecast-card__date">${dateStr}</div>
+                <div class="forecast-card__emoji">${emoji}</div>
+                <div class="forecast-card__condition">${escapeHtml(day.forecast)}</div>
+                <div class="forecast-card__relative-humidity">
+                    💧 ${day.relative_humidity?.low || 'N/A'}% - ${day.relative_humidity?.high || 'N/A'}%
+                </div>
+            </div>
+        `;
+    }).join('');
+
     display.innerHTML = `
-        <div class="weather-info">
-            <div class="weather-item">
-                <div class="weather-item__label">Temperature</div>
-                <div class="weather-item__value">${weather.temperature}°C</div>
-            </div>
-            <div class="weather-item">
-                <div class="weather-item__label">Condition</div>
-                <div class="weather-item__value">${escapeHtml(weather.condition)}</div>
-            </div>
-            <div class="weather-item">
-                <div class="weather-item__label">Humidity</div>
-                <div class="weather-item__value">${weather.humidity}%</div>
-            </div>
-            <div class="weather-item">
-                <div class="weather-item__label">Wind Speed</div>
-                <div class="weather-item__value">${weather.windSpeed} km/h</div>
-            </div>
+        <div class="weather-header">
+            <h3 class="weather-header__title">4-Day Forecast for Singapore Beaches</h3>
+            <p class="weather-header__updated">Last updated: ${weather.lastUpdated}</p>
         </div>
-        <p style="margin-top: 16px; text-align: center; color: #7F8C8D; font-size: 14px;">
-            Weather for <strong>${escapeHtml(weather.location)}</strong>
+        <div class="forecast-grid">
+            ${forecastHTML}
+        </div>
+        <p class="weather-info__note">
+            Data provided by National Environment Agency (NEA) via data.gov.sg
         </p>
     `;
 }
@@ -341,29 +413,37 @@ function initWeatherSearch() {
     if (searchBtn && weatherInput) {
         const handleSearch = async (e) => {
             e.preventDefault();
-            const location = weatherInput.value.trim();
-            if (!location) {
-                showNotification('Please enter a location', 'error');
-                return;
-            }
-
+            
             try {
                 const display = document.getElementById('weatherDisplay');
-                if (display) display.innerHTML = '<p class="loading">Loading weather...</p>';
+                if (display) display.innerHTML = '<p class="loading">⏳ Fetching latest weather from NEA...</p>';
 
-                const weather = await fetchWeather(location);
+                const weather = await fetchWeather('Singapore');
                 displayWeather(weather);
 
                 // Cache the weather data
-                StorageManager.set(`weather_${location}`, weather);
+                StorageManager.set('weather_forecast', weather);
+                showNotification('✅ Weather forecast loaded successfully!', 'success');
             } catch (error) {
-                showNotification(`Error: ${error.message}`, 'error');
+                showNotification(`❌ ${error.message}`, 'error');
+                const display = document.getElementById('weatherDisplay');
+                if (display) {
+                    display.innerHTML = '<p class="weather-error">Unable to load weather data. Please try again or ensure the NEA API is accessible.</p>';
+                }
             }
         };
 
         searchBtn.addEventListener('click', handleSearch);
         weatherInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') handleSearch(e);
+        });
+
+        // Load cached forecast on page load
+        window.addEventListener('load', () => {
+            const cached = StorageManager.get('weather_forecast');
+            if (cached) {
+                displayWeather(cached);
+            }
         });
     }
 }
@@ -450,6 +530,8 @@ function initButtons() {
     const createEventBtn = document.getElementById('createEventBtn');
     const findEventBtn = document.getElementById('findEventBtn');
     const joinBtn = document.getElementById('joinBtn');
+    const getDirectionsBtn = document.getElementById('getDirectionsBtn');
+    const addToCalendarBtn = document.getElementById('addToCalendarBtn');
 
     if (createEventBtn) {
         createEventBtn.addEventListener('click', () => {
@@ -466,6 +548,19 @@ function initButtons() {
     if (joinBtn) {
         joinBtn.addEventListener('click', () => {
             showNotification('Welcome to ShoreSquad! 🌊 Check your email to verify your account.', 'success');
+        });
+    }
+
+    // Map section buttons
+    if (getDirectionsBtn) {
+        getDirectionsBtn.addEventListener('click', () => {
+            window.open(CONFIG.NEXT_CLEANUP.mapsUrl, '_blank');
+        });
+    }
+
+    if (addToCalendarBtn) {
+        addToCalendarBtn.addEventListener('click', () => {
+            addEventToCalendar();
         });
     }
 }
@@ -546,6 +641,52 @@ function initKeyboardNavigation() {
             }
         }
     });
+}
+
+// ============================================
+// Calendar Integration
+// ============================================
+
+/**
+ * Add cleanup event to user's calendar
+ */
+function addEventToCalendar() {
+    const event = CONFIG.NEXT_CLEANUP;
+    
+    // Create iCal format for broad compatibility
+    const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//ShoreSquad//Cleanup Event//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+DTSTART:${event.date}T070000Z
+DTEND:${event.date}T120000Z
+DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z
+UID:shoresquad-${Date.now()}@shoresquad.local
+CREATED:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z
+DESCRIPTION:Join ShoreSquad for a beach cleanup at ${event.location}. Coordinates: ${event.lat}, ${event.lng}
+LAST-MODIFIED:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z
+LOCATION:${event.location}
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:${event.name}
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR`;
+
+    // Create blob and download
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `shoresquad-cleanup-${event.date}.ics`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showNotification('Calendar file downloaded! Add it to your calendar app. 📅', 'success');
 }
 
 // ============================================

@@ -142,10 +142,46 @@
             </div>
         </section>
 
+        <!-- Map Section -->
+        <section class="map-section" id="map" aria-label="Next cleanup location map">
+            <div class="container">
+                <h2 class="section__title">Next Cleanup Location</h2>
+                <div class="map-info">
+                    <h3 class="map-info__title">🏖️ Pasir Ris Beach Cleanup</h3>
+                    <p class="map-info__details">
+                        <strong>Location:</strong> Street View Asia, Pasir Ris, Singapore<br>
+                        <strong>Coordinates:</strong> 1.381497°N, 103.955574°E
+                    </p>
+                </div>
+                <div class="map-container">
+                    <iframe 
+                        class="map-iframe"
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3988.8217844445646!2d103.95530742346927!3d1.3814970988577155!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31da1a3e5d5d5d5d%3A0x123456789abcdef0!2sStreet%20View%20Asia!5e0!3m2!1sen!2ssg!4v1701619200000" 
+                        width="100%" 
+                        height="500" 
+                        style="border:0;" 
+                        allowfullscreen="" 
+                        loading="lazy" 
+                        referrerpolicy="no-referrer-when-downgrade"
+                        title="Pasir Ris Beach Cleanup Location"
+                        aria-label="Google Map showing Pasir Ris Beach cleanup location at coordinates 1.381497, 103.955574">
+                    </iframe>
+                </div>
+                <div class="map-cta">
+                    <button class="btn btn--primary" id="getDirectionsBtn" aria-label="Get directions to Pasir Ris Beach">
+                        🧭 Get Directions
+                    </button>
+                    <button class="btn btn--secondary" id="addToCalendarBtn" aria-label="Add this cleanup event to your calendar">
+                        📅 Add to Calendar
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <!-- Weather Section -->
         <section class="weather" id="weather" aria-label="Current beach weather">
             <div class="container">
-                <h2 class="section__title">Weather Check</h2>
+                <h2 class="section__title">4-Day Weather Forecast</h2>
                 
                 <div class="weather__content">
                     <div class="weather__input">
@@ -153,16 +189,16 @@
                             type="text" 
                             id="weatherLocation" 
                             class="search-input" 
-                            placeholder="Enter beach location..."
-                            aria-label="Enter beach location for weather forecast"
+                            placeholder="Enter location (e.g., Singapore, Pasir Ris)..."
+                            aria-label="Enter location for weather forecast"
                         >
-                        <button class="btn btn--secondary" id="searchWeatherBtn" aria-label="Search weather for location">
-                            Check Weather
+                        <button class="btn btn--secondary" id="searchWeatherBtn" aria-label="Fetch weather forecast from NEA">
+                            Get Forecast
                         </button>
                     </div>
 
                     <div class="weather__display" id="weatherDisplay">
-                        <!-- Weather data will be populated here -->
+                        <p class="loading" role="status" aria-live="polite">📍 Enter a location and click "Get Forecast" to see the 4-day weather from NEA</p>
                     </div>
                 </div>
             </div>
